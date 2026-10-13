@@ -179,32 +179,3 @@ def crossover(parent_A,parent_B):
   
   return None
 
-if __name__ == "__main__":
-#  average_size = 39.15
-#  size_stdev = 3.50
-
-  average_size = 21
-  size_stdev = 6
-
-#  smiles1 = 'CC(C)(C)c1ccc2occ(CC(=O)Nc3ccccc3F)c2c1'
-#  smiles2 = 'C[C@@H]1CC(Nc2cncc(-c3nncn3C)c2)C[C@@H](C)C1'
-
-#  smiles1 = 'Cc1ccc(S(=O)(=O)N2C(N)=C(C#N)C(c3ccc(Cl)cc3)C2C(=O)c2ccccc2)cc1'
-#  smiles2 = 'CC(C#N)CNC(=O)c1cccc(Oc2cccc(C(F)(F)F)c2)c1'
-
-  smiles1 = 'CN1CCC2=C1C=CC(/C=C/C=C/C(SC3)=NC3=O)=C2'
-  smiles2 = 'O=C1N=C(SC1)/C=C/C=C/C2=CC(C(C)(C)CCN3C)=C3C=C2'
-
-
-  mol1 = Chem.MolFromSmiles(smiles1)
-  mol2 = Chem.MolFromSmiles(smiles2)
-
-  child = crossover(mol1,mol2)
-  mutation_rate = 0.5
-  mutated_child = mu.mutate(child,mutation_rate)
- 
-  for i in range(100):
-    print(Chem.MolToSmiles(mutated_child))
-    print("---------------")
-    child = crossover(mol1,mol2)
-    mutated_child = mu.mutate(child,mutation_rate)

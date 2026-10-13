@@ -2,7 +2,7 @@
 """
 check_novelty.py
 ================
-2.5D SPACE-GA Novelty Analysis
+PAMR-GA Novelty Analysis
 =====================================
 
 Computes Tanimoto similarity of validated GA molecules against the
@@ -82,7 +82,7 @@ def main():
     os.makedirs('results', exist_ok=True)
 
     print("=" * 65)
-    print("  2.5D SPACE-GA Novelty Analysis")
+    print("  PAMR-GA Novelty Analysis")
     print(f"  Novelty threshold: Tc < {args.threshold}")
     print("=" * 65)
 
@@ -201,7 +201,7 @@ def main():
 
     # Write report
     with open(OUTPUT_TXT, 'w') as f:
-        f.write("2.5D SPACE-GA — Novelty Analysis Report\n")
+        f.write("PAMR-GA — Novelty Analysis Report\n")
         f.write("=" * 65 + "\n\n")
         f.write(f"Training set:  {TRAINING_DATA} ({len(train_fps)} molecules)\n")
         f.write(f"Generated set: {args.input} ({n_total} molecules)\n")
@@ -226,7 +226,6 @@ def main():
             f.write(f"  Nearest: {row['NearestNeighbour']}\n\n")
 
     print(f"  Report saved: {OUTPUT_TXT}")
-    print(f"\n  Next: python3 scripts/run_docking.py")
     print("=" * 65)
 
 

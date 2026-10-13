@@ -2,7 +2,7 @@
 """
 train_gpr_peoe.py
 =================
-2.5D SPACE-GA Phase 2 & 3 — SASA×PEOE Weighted Morgan + GPR Training
+PAMR-GA Phase 2 & 3 — SASA×PEOE Weighted Morgan + GPR Training
 ===========================================================================
 
 Descriptor (2048 features):
@@ -184,7 +184,7 @@ def main():
     os.makedirs('data',   exist_ok=True)
 
     print("=" * 65)
-    print("  2.5D SPACE-GA GPR Training")
+    print("  PAMR-GA GPR Training")
     print("  Descriptor: SASA×PEOE Weighted Morgan (2048 bits, r=2)")
     print("  Weight:     mean_SASA(atom) × |PEOE(atom)|")
     print(f"  Conformers: {N_CONFS} per molecule (MMFF optimized)")
@@ -316,7 +316,7 @@ def main():
     print(f"  Test RMSE:   {rmse:.4f}")
     print(f"  Model saved: {MODEL_PATH}")
     print("=" * 65)
-    print("\n  Next: python3 space_ga.py")
+    print("\n  Next: python3 pamr_ga.py")
 
 
 if __name__ == "__main__":

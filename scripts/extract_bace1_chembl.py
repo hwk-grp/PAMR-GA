@@ -2,7 +2,7 @@
 """
 extract_bace1_chembl.py
 =======================
-Dataset Extraction Script for 2.5D SPACE-GA
+Dataset Extraction Script for PAMR-GA
 Extracts BACE-1 inhibitor bioactivity data from ChEMBL 36 SQLite database.
 
 Target  : BACE-1 (Beta-secretase 1), ChEMBL ID: CHEMBL4822

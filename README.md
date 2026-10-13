@@ -1,95 +1,114 @@
 # PAMR-GA
 Structure-Independent Genetic Algorithm-Based Molecular Optimization Using Pocket-Aware Molecular Representations
 
+## Overview
 
-Code description
-========
+PAMR-GA generates candidate BACE-1 (beta-secretase 1) inhibitors with a genetic
+algorithm (GA) whose fitness function is constrained by a binding-pocket model
+inferred entirely from structure-activity relationship (SAR) data, without a
+crystal structure or docking step. The pipeline implements:
 
-* space_ga.py
+- **Pocket-map inversion**: infers binding-pocket constraints (volume ceiling,
+  hydrogen-bond hotspots, steric exclusion spheres) directly from BACE-1
+  bioactivity data by contrasting activity cliffs, rather than from a resolved
+  protein structure.
+- **2.5D SASA×PEOE descriptor + GPR surrogate**: a Morgan fingerprint reweighted
+  by per-atom solvent-accessible surface area (SASA) and partial equalization
+  of orbital electronegativity (PEOE) charge, used to fit a Gaussian Process
+  Regression (GPR) surrogate (Tanimoto kernel) that predicts pIC50 from
+  structure alone.
+- **Spatially-constrained GA**: evolves a molecular pool under crossover and
+  reaction-rule-based mutation, scoring each candidate with the GPR surrogate
+  penalized by fit against the inferred pocket geometry.
+- **Post-hoc validation**: drug-likeness/spatial-fitness filtering of the GA
+  output and Tanimoto novelty analysis against the training set.
 
-Main code of the PAMR-GA framework used for BACE-1 inhibitor generation. Loads the SAR-derived pocket map, the GPR surrogate, and the initial pool, then evolves molecules under the spatially-constrained genetic algorithm.
+## Requirements
 
-* crossover.py
+Pinned in [env.yml](env.yml):
 
-Crossover module within the genetic algorithm.
+- Python 3.10
+- RDKit 2022.09.5
+- NumPy 1.26.4 (must stay below 2.0 — incompatible with this RDKit build)
+- pandas, scipy, scikit-learn, tqdm
 
-* mutate_reaction.dat
-
-List of predefined reaction rules used for mutation operations.
-
-* data/bace1_dataset.csv
-
-Curated BACE-1 bioactivity data (ChEMBL4822): SMILES and pIC50 values. Used to train the GPR surrogate.
-
-* data/bace1_initpool.dat
-
-Initial molecular pool for the BACE-1 inhibitor generation task.
-
-* data/pocket_map.pkl
-
-SAR-derived binding-pocket map (volume ceiling, hydrogen-bond hotspots, exclusion spheres) inverse-engineered from activity data. Provided so the generation step can be run directly; it can also be regenerated with `scripts/pocket_map.py`.
-
-* scripts/
-
-  - extract_bace1_chembl.py  — rebuild the dataset from a ChEMBL SQLite release
-  - pocket_map.py            — Phase 1: inverse-engineer the pocket from SAR (activity cliffs, hotspots, exclusion spheres)
-  - train_gpr_peoe.py        — Phase 2/3: SASA×PEOE weighted Morgan descriptor + GPR surrogate training
-  - validate_molecules.py    — drug-likeness and spatial-fitness filtering of GA output
-  - check_novelty.py         — Tanimoto novelty analysis against the training set
-  - run_docking.py           — AutoDock Vina docking validation
-
-
-How to Run
-========
-
-1. Install [Anaconda](https://www.anaconda.com/products/individual)
-
-2. Create a conda environment from the `env.yml` file
+## Installation
 
 ```bash
-$ conda env create --file env.yml
+conda env create --file env.yml
+conda activate pamr_ga
 ```
 
-3. Activate the conda environment
+## Project Structure
 
-```bash
-$ conda activate space_ga
+```
+PAMR-GA/
+├── pamr_ga.py                    # Main GA loop: BACE-1 inhibitor generation
+├── crossover.py                  # Crossover operator
+├── mutate_reaction.dat           # Predefined reaction rules for mutation
+├── env.yml                       # Conda environment specification
+├── data/
+│   ├── bace1_dataset.csv         # Curated BACE-1 bioactivity data (ChEMBL, target CHEMBL4822)
+│   ├── bace1_initpool.dat        # Initial molecular pool
+│   └── pocket_map.pkl            # SAR-derived binding-pocket map
+└── scripts/
+    ├── extract_bace1_chembl.py   # Rebuild bace1_dataset.csv from a ChEMBL SQLite release
+    ├── pocket_map.py             # Phase 1: infer the pocket map from SAR activity cliffs
+    ├── train_gpr_peoe.py         # Phase 2/3: train the SASA×PEOE descriptor + GPR surrogate
+    ├── validate_molecules.py     # Drug-likeness and spatial-fitness filtering of GA output
+    └── check_novelty.py          # Tanimoto novelty analysis against the training set
 ```
 
-4. (Optional) Regenerate the SAR-derived pocket map
+## Usage
 
-```bash
-$ python3 scripts/pocket_map.py
-```
+1. **(Optional) Regenerate the SAR-derived pocket map**
 
-This reads `data/bace1_dataset.csv` and writes `data/pocket_map.pkl`. A prebuilt `pocket_map.pkl` is already provided, so this step can be skipped.
+   ```bash
+   python3 scripts/pocket_map.py
+   ```
 
-5. Train the 2.5D SASA×PEOE descriptor and GPR surrogate
+   Reads `data/bace1_dataset.csv`, writes `data/pocket_map.pkl`. A prebuilt
+   `pocket_map.pkl` is already provided, so this step can be skipped.
 
-```bash
-$ python3 scripts/train_gpr_peoe.py
-```
+2. **Train the SASA×PEOE descriptor and GPR surrogate**
 
-This reads `data/bace1_dataset.csv` and writes the descriptor matrices and the trained model (`models/gpr_peoe_bace1.pkl`).
+   ```bash
+   python3 scripts/train_gpr_peoe.py
+   ```
 
-6. Run the main generation script
+   Reads `data/bace1_dataset.csv`, writes the descriptor matrices and the
+   trained model (`models/gpr_peoe_bace1.pkl`).
 
-```bash
-$ python3 space_ga.py > log.dat
-```
+3. **Run the genetic algorithm**
 
-Output files are stored in the `results/steps/` directory. Each index file corresponds to a specific step of the genetic cycle and contains the selection cutoff value, molecules in the pool, and their properties. On the first run the pool descriptors are computed from `data/bace1_initpool.dat` and cached automatically.
+   ```bash
+   python3 pamr_ga.py > log.dat
+   ```
 
-7. Validate and analyze the generated molecules
+   Writes `results/steps/INDEX_N.dat` and `results/steps/top_mols_step_N.csv`
+   per generation (selection cutoff, pool molecules, and their properties),
+   plus a pooled `results/all_top_molecules.csv`. On the first run, pool
+   descriptors are computed from `data/bace1_initpool.dat` and cached to
+   `data/pool_sasa_peoe_descriptors.npy` / `data/pool_smiles.npy`.
 
-```bash
-$ python3 scripts/validate_molecules.py
-$ python3 scripts/check_novelty.py
-$ python3 scripts/run_docking.py
-```
+4. **Validate and analyze the generated molecules**
 
+   ```bash
+   python3 scripts/validate_molecules.py
+   python3 scripts/check_novelty.py
+   ```
 
-Notes
-========
+   Writes `results/validated_molecules.csv` + `results/validation_report.txt`,
+   then `results/novelty_analysis.csv` + `results/novelty_report.txt`.
 
-The trained model, descriptor matrices, and docking outputs are regenerated by the scripts above and are not distributed with this repository. To rebuild the dataset from scratch, run `scripts/extract_bace1_chembl.py` against a ChEMBL SQLite release.
+## Data Sources
+
+`data/bace1_dataset.csv` is curated from [ChEMBL](https://www.ebi.ac.uk/chembl/)
+(target CHEMBL4822, BACE-1) bioactivity records. It is provided pre-extracted;
+to rebuild it from scratch, download a ChEMBL SQLite release and run
+`scripts/extract_bace1_chembl.py --db <path/to/chembl_36.db>`.
+
+## Notes
+
+The trained GPR model and descriptor matrices are regenerated by the scripts
+above and are not distributed with this repository.

@@ -1,7 +1,7 @@
 """
 pocket_map.py
 ==================
-2.5D SPACE-GA: Phase 1 — Pocket Inverse-Engineering
+PAMR-GA: Phase 1 — Pocket Inverse-Engineering
 =====================================================
 
 
@@ -26,7 +26,7 @@ Output:
     data/activity_cliff_pairs.pkl
 
 Reference:
-    2.5D SPACE-GA idea note:
+    PAMR-GA idea note:
     "By analyzing Activity Cliff data, the protruding volumes
     of inactive analogs are defined as steric walls."
 """
@@ -58,9 +58,9 @@ def parse_args():
     parser.add_argument('--vmax-percentile', type=float, default=95.0)
     parser.add_argument('--hotspot-consensus', type=float, default=0.5)
     parser.add_argument('--cliff-tanimoto', type=float, default=0.7,
-        help='Tanimoto threshold for activity cliff pairs (idea: 0.7)')
+        help='Tanimoto threshold for activity cliff pairs (default: 0.7)')
     parser.add_argument('--cliff-delta', type=float, default=2.0,
-        help='pIC50 difference for activity cliff (idea: 2.0)')
+        help='pIC50 difference for activity cliff (default: 2.0)')
     parser.add_argument('--cluster-radius', type=float, default=2.0)
     parser.add_argument('--exclusion-radius', type=float, default=1.5)
     parser.add_argument('--max-actives', type=int, default=500)
@@ -324,7 +324,7 @@ def main():
     key_families = {'Donor', 'Acceptor', 'Aromatic'}
 
     print("=" * 60)
-    print("  2.5D SPACE-GA: Phase 1 — Pocket Inverse-Engineering")
+    print("  PAMR-GA: Phase 1 — Pocket Inverse-Engineering")
     print("  Method: True Activity Cliff Analysis (from idea note)")
     print("=" * 60)
     print(f"  Activity cliff: Tc > {args.cliff_tanimoto}, "

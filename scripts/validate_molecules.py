@@ -2,7 +2,7 @@
 """
 validate_molecules.py
 =====================
-2.5D SPACE-GA Post-GA Molecule Validation
+PAMR-GA Post-GA Molecule Validation
 ===============================================
 
 Validates top molecules from GA output against drug-likeness criteria,
@@ -53,7 +53,7 @@ HBOND_DIST        = 3.5
 STERIC_PENALTY    = 1.0
 VOL_PENALTY       = 0.05
 
-# ── Reactive SMARTS (same as space_ga.py) ────────────────────────
+# ── Reactive SMARTS (same as pamr_ga.py) ────────────────────────
 _REACTIVE_SMARTS = [
     '[SH]', 'OF', '[C-]#[N+]', 'C=CO', 'O-O', '[N-]',
 ]
@@ -137,7 +137,7 @@ def main():
     os.makedirs('results', exist_ok=True)
 
     print("=" * 65)
-    print("  2.5D SPACE-GA Molecule Validation")
+    print("  PAMR-GA Molecule Validation")
     print("=" * 65)
 
     print("\n[Step 1/5] Loading pocket map...")
@@ -261,7 +261,7 @@ def main():
 
     print(f"\n  Writing validation report...")
     with open(OUTPUT_TXT, 'w') as f:
-        f.write("2.5D SPACE-GA — Validation Report\n")
+        f.write("PAMR-GA — Validation Report\n")
         f.write("=" * 65 + "\n\n")
         f.write(f"Input:  {args.input}\n")
         f.write(f"Output: {args.output}\n\n")
@@ -279,7 +279,6 @@ def main():
                 f.write(f"  {row['SMILES']}\n\n")
     print(f"  Saved: {OUTPUT_TXT}")
     print(f"\n  Next: python3 scripts/check_novelty.py")
-    print(f"        python3 scripts/run_docking.py")
     print("=" * 65)
 
 
