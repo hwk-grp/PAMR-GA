@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, Descriptors, QED
+from rdkit.Chem import rdMolAlign
 from tqdm import tqdm
 
 RDLogger.DisableLog('rdApp.*')
@@ -96,6 +97,33 @@ def get_3d_mol(smiles):
     except Exception:
         return None
     return mol
+
+
+_REF_MOL = {}
+
+def align_to_pocket_frame(mol, pocket_map):
+    """Align mol onto the reference molecule that defines the pocket frame.
+
+    The hotspot and exclusion-sphere coordinates in pocket_map are expressed in
+    the reference active's internal frame, so a freshly embedded molecule must
+    be aligned onto that reference before any distance comparison. Must match
+    the alignment used in pamr_ga.py or validation re-scores in a different
+    frame from the one that generated the molecules. See docs/FIXES.md.
+    """
+    smi = pocket_map['ref_smiles']
+    if smi not in _REF_MOL:
+        _REF_MOL[smi] = get_3d_mol(smi)
+    ref = _REF_MOL[smi]
+    if ref is None:
+        return False
+    try:
+        o3a = rdMolAlign.GetO3A(mol, ref)
+        if o3a is None:
+            return False
+        o3a.Align()
+        return True
+    except Exception:
+        return False
 
 
 def calculate_spatial_fitness(mol_3d, base_score, pocket_map):
@@ -195,6 +223,8 @@ def main():
             continue
 
         mol_3d = get_3d_mol(canon)
+        if mol_3d is not None and not align_to_pocket_frame(mol_3d, pocket_map):
+            mol_3d = None
         if mol_3d is None:
             stats['conformer_fail'] += 1
             s_final_rescore = np.nan

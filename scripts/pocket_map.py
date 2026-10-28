@@ -56,7 +56,8 @@ def parse_args():
     parser.add_argument('--threshold', type=float, default=8.0,
         help='Active threshold pIC50 >= threshold')
     parser.add_argument('--vmax-percentile', type=float, default=95.0)
-    parser.add_argument('--hotspot-consensus', type=float, default=0.5)
+    parser.add_argument('--hotspot-consensus', type=float, default=0.3,
+        help='Min fraction of actives sharing a pharmacophore feature for it to be kept as a hotspot')
     parser.add_argument('--cliff-tanimoto', type=float, default=0.7,
         help='Tanimoto threshold for activity cliff pairs (default: 0.7)')
     parser.add_argument('--cliff-delta', type=float, default=2.0,
@@ -64,8 +65,8 @@ def parse_args():
     parser.add_argument('--cluster-radius', type=float, default=2.0)
     parser.add_argument('--exclusion-radius', type=float, default=1.5)
     parser.add_argument('--max-actives', type=int, default=500)
-    parser.add_argument('--max-cliff-pairs', type=int, default=200,
-        help='Max activity cliff pairs to process')
+    parser.add_argument('--max-cliff-pairs', type=int, default=500,
+        help='Keep this many strongest cliff pairs after ranking by delta-pIC50')
     parser.add_argument('--n-iterations', type=int, default=5)
     parser.add_argument('--force-regenerate', action='store_true')
     return parser.parse_args()
@@ -141,7 +142,7 @@ def compute_consensus_centroids(all_features, key_families, threshold=0.5):
 # ═════════════════════════════════════════════════════════════════════
 
 def find_activity_cliff_pairs(df, tc_threshold=0.7, delta_threshold=2.0,
-                               max_pairs=200):
+                               max_pairs=500):
     """
     Find activity cliff pairs as specified in idea note:
     - Tanimoto similarity > tc_threshold (default 0.7)
@@ -173,30 +174,43 @@ def find_activity_cliff_pairs(df, tc_threshold=0.7, delta_threshold=2.0,
     cliff_pairs = []
     n = len(fps)
 
-    for i in tqdm(range(n), desc="  Finding cliffs", unit="mol"):
-        for j in range(i+1, n):
-            tc    = DataStructs.TanimotoSimilarity(fps[i], fps[j])
-            delta = abs(pics[i] - pics[j])
+    # EXHAUSTIVE scan, then rank, then truncate. Previously the loops broke at
+    # max_pairs and sorted afterwards, so the pairs kept were the first found
+    # in dataset order rather than the strongest cliffs (see docs/FIXES.md).
+    # The inner loop is vectorised because a full scan is ~32M pairs for BACE-1.
+    pics_arr = np.asarray(pics, dtype=np.float64)
 
-            if tc >= tc_threshold and delta >= delta_threshold:
-                # active = higher pIC50, inactive = lower pIC50
-                if pics[i] > pics[j]:
-                    cliff_pairs.append((smiles_list[i], smiles_list[j],
-                                        pics[i], pics[j], tc, delta))
-                else:
-                    cliff_pairs.append((smiles_list[j], smiles_list[i],
-                                        pics[j], pics[i], tc, delta))
+    for i in tqdm(range(n - 1), desc="  Finding cliffs", unit="mol"):
+        tcs    = np.asarray(
+            DataStructs.BulkTanimotoSimilarity(fps[i], fps[i+1:]),
+            dtype=np.float64)
+        deltas = np.abs(pics_arr[i] - pics_arr[i+1:])
+        hits   = np.nonzero((tcs >= tc_threshold) &
+                            (deltas >= delta_threshold))[0]
 
-                if len(cliff_pairs) >= max_pairs:
-                    break
-        if len(cliff_pairs) >= max_pairs:
-            break
+        for h in hits:
+            j     = i + 1 + int(h)
+            tc    = float(tcs[h])
+            delta = float(deltas[h])
+            # active = higher pIC50, inactive = lower pIC50
+            if pics[i] > pics[j]:
+                cliff_pairs.append((smiles_list[i], smiles_list[j],
+                                    pics[i], pics[j], tc, delta))
+            else:
+                cliff_pairs.append((smiles_list[j], smiles_list[i],
+                                    pics[j], pics[i], tc, delta))
 
+    n_qualifying = len(cliff_pairs)
     cliff_pairs.sort(key=lambda x: x[5], reverse=True)  # sort by delta
-    print(f"  Found {len(cliff_pairs)} activity cliff pairs")
+    cliff_pairs = cliff_pairs[:max_pairs]
+
+    print(f"  Qualifying pairs in dataset: {n_qualifying}")
+    print(f"  Retained (top {max_pairs} by ΔpIC50): {len(cliff_pairs)}")
     if cliff_pairs:
-        print(f"  Best cliff: Tc={cliff_pairs[0][4]:.3f}, "
+        print(f"  Best cliff:  Tc={cliff_pairs[0][4]:.3f}, "
               f"ΔpIC50={cliff_pairs[0][5]:.2f}")
+        print(f"  Worst kept:  Tc={cliff_pairs[-1][4]:.3f}, "
+              f"ΔpIC50={cliff_pairs[-1][5]:.2f}")
 
     return cliff_pairs
 

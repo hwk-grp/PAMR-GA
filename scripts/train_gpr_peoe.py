@@ -2,7 +2,7 @@
 """
 train_gpr_peoe.py
 =================
-PAMR-GA Phase 2 & 3 — SASA×PEOE Weighted Morgan + GPR Training
+PAMR-GA Phase 2 & 3 — Spatial-Electrostatic Weighted Fingerprint (SEWF) + GPR Training
 ===========================================================================
 
 Descriptor (2048 features):
@@ -99,7 +99,8 @@ ACTIVE_THRESHOLD = 8.0
 # ── Descriptor: SASA × PEOE Weighted Morgan ───────────────────────────
 def get_sasa_peoe_descriptor(smiles):
     """
-    Compute SASA×PEOE weighted Morgan fingerprint (2048 bits, radius=2).
+    Compute the spatial-electrostatic weighted fingerprint (SEWF): a Morgan
+    fingerprint (2048 bits, radius=2) whose bits are weighted by SASA x |PEOE|.
 
     V_bit_i = Σ mean_SASA(a) × |PEOE(a)|  for atoms a contributing to bit i
 
@@ -185,7 +186,7 @@ def main():
 
     print("=" * 65)
     print("  PAMR-GA GPR Training")
-    print("  Descriptor: SASA×PEOE Weighted Morgan (2048 bits, r=2)")
+    print("  Descriptor: SEWF — SASA×PEOE weighted Morgan (2048 bits, r=2)")
     print("  Weight:     mean_SASA(atom) × |PEOE(atom)|")
     print(f"  Conformers: {N_CONFS} per molecule (MMFF optimized)")
     print("  Model:      GPR with Tanimoto kernel")
@@ -207,7 +208,7 @@ def main():
         y = np.load(DESC_Y)
         print(f"  Loaded: {X.shape[0]} molecules x {X.shape[1]} features")
     else:
-        print(f"\n[Step 2/5] Generating SASA×PEOE weighted Morgan descriptors...")
+        print(f"\n[Step 2/5] Generating SEWF (SASA×PEOE weighted Morgan) descriptors...")
         print(f"  Bits: {N_BITS} | Radius: {RADIUS} | Conformers: {N_CONFS}")
         X_list, y_list = [], []
         failed = 0

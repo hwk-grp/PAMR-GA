@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import AllChem, Descriptors, rdFreeSASA, rdPartialCharges
+from rdkit.Chem import rdMolAlign
 
 import crossover as co
 from tqdm import tqdm
@@ -258,6 +259,39 @@ def get_3d_mol(smiles):
         return None
     return mol
 
+_REF_MOL    = {}
+_ALIGN_FAIL = [0]
+
+def align_to_pocket_frame(mol, pocket_map):
+    """Align mol onto the reference molecule that defines the pocket frame.
+
+    pocket_map's hotspot and exclusion-sphere coordinates are expressed in the
+    internal frame of the reference active: pocket_map.py O3A-aligns every
+    molecule onto that reference before extracting them. A freshly embedded
+    molecule sits in its own arbitrary frame, so this alignment is required
+    before any distance comparison is meaningful. Returns True on success.
+    """
+    smi = pocket_map['ref_smiles']
+    if smi not in _REF_MOL:
+        _REF_MOL[smi] = get_3d_mol(smi)
+    ref = _REF_MOL[smi]
+    if ref is None:
+        return False
+    try:
+        o3a = rdMolAlign.GetO3A(mol, ref)
+        if o3a is None:
+            _ALIGN_FAIL[0] += 1
+            if _ALIGN_FAIL[0] % 500 == 0:
+                print(f"  [align] O3A failed on {_ALIGN_FAIL[0]} offspring",
+                      flush=True)
+            return False
+        o3a.Align()
+        return True
+    except Exception:
+        _ALIGN_FAIL[0] += 1
+        return False
+
+
 def calculate_spatial_fitness(mol_3d, base_score, pocket_map):
     """
     S_final = S_GPR - Penalty(Volume) - Penalty(Steric) + Bonus(H-bond)
@@ -324,6 +358,11 @@ def evaluate_offspring(smiles, gpr_model, scaler, pocket_map, desc_cache=None):
     # 4. 3D conformer for spatial fitness
     mol_3d = get_3d_mol(smiles)
     if mol_3d is None:
+        return -999.0, -999.0
+
+    # Align into the pocket's coordinate frame before any geometric
+    # comparison against hotspots or exclusion spheres (see docs/FIXES.md).
+    if not align_to_pocket_frame(mol_3d, pocket_map):
         return -999.0, -999.0
 
     # 5. Hard volume culling
